@@ -35,6 +35,8 @@
 // tests' maps. Ends nearer than WithNear asks, a state Coords places nowhere and any path asked
 // while the hierarchy is not Ready are found by A*, the cheapest; ends no path joins are told
 // apart off the hierarchy's labels of connected entrances, not by searching all a start reaches.
+// Abstract gives the route climbed unrefined, for a caller moving along it on its own: the
+// entrances it passes through on the level searched and the cost of each leg between them.
 //
 // The graph may change while its Solver lives: a step added or taken away, the cost of a step or
 // the classes it refuses changed. Changed marks the first-level clusters a changed state's steps

@@ -316,6 +316,50 @@ func (s *Climb[T]) Refine(dst []T) int {
 	return n
 }
 
+// Abstract writes the route found as the level searched has it: into dst the states of its
+// nodes, as many as dst holds and costs holds less one, and into costs the cost of each leg from
+// from through them to to. It reports how many states it wrote.
+func (s *Climb[T]) Abstract(dst []T, costs []float64) int {
+	q := &s.q
+	if len(costs) == 0 {
+		return 0
+	}
+	lv, room := &s.v.levels[q.level], min(len(dst), len(costs)-1)
+	n, leg := 0, 0.0
+	for t := 0; t+1 < len(q.path); t++ {
+		u, v := q.path[t], q.path[t+1]
+		leg += s.jump(u, v)
+		if v != goalRef && n < room {
+			dst[n], costs[n] = lv.clusters[v.c].states[v.i], leg
+			n, leg = n+1, 0
+		}
+	}
+	costs[n] = leg
+	return n
+}
+
+// jump is the cost of the step of the level searched from u to v, as the search took it
+func (s *Climb[T]) jump(u, v nodeRef) float64 {
+	q, j := &s.q, s.q.level
+	lv := &s.v.levels[j]
+	switch {
+	case u == startRef:
+		return q.startCost[j][v.i]
+	case v == goalRef:
+		return q.goalCost[j][u.i]
+	case u.c == v.c:
+		cl := &lv.clusters[u.c]
+		return float64(cl.intra[u.i*int32(len(cl.keys))+v.i])
+	}
+	cl, key, cost := &lv.clusters[u.c], lv.clusters[v.c].keys[v.i], inf32
+	for _, tw := range cl.twins[cl.twinAt[u.i]:cl.twinAt[u.i+1]] {
+		if tw.other == v.c && tw.key == key {
+			cost = min(cost, tw.out)
+		}
+	}
+	return float64(cost)
+}
+
 // emit writes st next on the route; false once the route fills dst
 func (s *Climb[T]) emit(st T) bool {
 	q := &s.q

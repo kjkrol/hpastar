@@ -176,6 +176,16 @@ microseconds, where A* would search all the start reaches. `Reaches` answers fro
 labels. A square grid, a hex grid and a torus (through its `Transitions`) are all planes; two
 states may share a place (a bridge over a ford).
 
+`Abstract` gives the route climbed without refining it, for a caller that moves along the
+hierarchy's graph on its own: the entrances of the clusters of the level the climb searched that
+the route passes through, and the cost of each leg from the start through them to the goal,
+written into your buffers as `Path` writes; ends too near to climb take one leg, the cheapest
+path's cost.
+
+```go
+n, found := search.Abstract(from, to, entrances, costs) // entrances[:n], costs[:n+1]
+```
+
 ```go
 g.Layout = &graph.Layout[point]{
 	Coords:   func(p point) (int, int, bool) { return p.X, p.Y, true },

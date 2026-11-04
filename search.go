@@ -42,24 +42,36 @@ func (q *Search[T]) Path(from, to T, dst []T) (int, bool) {
 			return 0, false
 		}
 	}
-	e := q.engine()
-	e.Start(from, to)
-	over := false
-	if c := q.climb; c != nil {
-		// past a few clusters' worth of states the labels may tell no path joins the ends,
-		// sparing a flood of all from reaches
-		if over = e.Run(to, q.forward, c.Patience()); !over && !c.Reaches(from, to) {
-			return 0, false
-		}
-	}
-	if !over {
-		e.Run(to, q.forward, -1)
-	}
-	if !e.Found() {
+	if !q.solve(from, to) {
 		return 0, false
 	}
 	q.stats.Exact++
-	return e.Prefix(dst), true
+	return q.exact.Prefix(dst), true
+}
+
+// Abstract writes the route HPA* climbs from from to to, unrefined, and reports how many states
+// it wrote: into dst the entrances it passes through on the level searched, as many as dst holds
+// and costs holds less one, and into costs the cost of each leg from from through them to to.
+// Ends too near to climb take a single leg, the cheapest path's, and false says no path joins
+// the ends or the hierarchy tells no route: without a Layout, not Ready or an end off the plane.
+func (q *Search[T]) Abstract(from, to T, dst []T, costs []float64) (int, bool) {
+	c := q.climb
+	if c == nil {
+		return 0, false
+	}
+	switch c.Route(from, to) {
+	case hierarchy.Climbed:
+		return c.Abstract(dst, costs), true
+	case hierarchy.TooNear:
+		if !q.solve(from, to) {
+			return 0, false
+		}
+		if len(costs) > 0 {
+			costs[0] = q.exact.Cost()
+		}
+		return 0, true
+	}
+	return 0, false
 }
 
 // Reaches says whether to can be reached from from, by A* without a Layout. With one it reads
@@ -117,6 +129,25 @@ func (q *Search[T]) taken(steps graph.Transitions[T]) graph.Transitions[T] {
 		}
 		return kept
 	}
+}
+
+// solve has the exact engine search the cheapest path from from to to; false where none joins
+// them
+func (q *Search[T]) solve(from, to T) bool {
+	e := q.engine()
+	e.Start(from, to)
+	over := false
+	if c := q.climb; c != nil {
+		// past a few clusters' worth of states the labels may tell no path joins the ends,
+		// sparing a flood of all from reaches
+		if over = e.Run(to, q.forward, c.Patience()); !over && !c.Reaches(from, to) {
+			return false
+		}
+	}
+	if !over {
+		e.Run(to, q.forward, -1)
+	}
+	return e.Found()
 }
 
 func (q *Search[T]) engine() *astar.Engine[T] {
