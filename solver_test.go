@@ -179,6 +179,170 @@ func TestSolver_PathAnswersEveryPair(t *testing.T) {
 	}
 }
 
+// abstract is the whole route q climbs from from to to, unrefined: the states of its entrances
+// and the cost of each leg
+func abstract(q *hpastar.Search[int], from, to int) ([]int, []float64, bool) {
+	dst, costs := make([]int, 1024), make([]float64, 1025)
+	n, ok := q.Abstract(from, to, dst, costs)
+	if !ok {
+		return nil, nil, false
+	}
+	return dst[:n], costs[:n+1], true
+}
+
+// agree says whether two costs of one path agree as float32 costs summed may
+func agree(a, b float64) bool { return math.Abs(a-b) <= 1e-4*max(a, b) }
+
+func sum(costs []float64) float64 {
+	total := 0.0
+	for _, c := range costs {
+		total += c
+	}
+	return total
+}
+
+func TestSearch_AbstractIsTheEntrancesOfThePath(t *testing.T) {
+	const side = 16
+	m64, m256, m128 := testmap.New(7, 64, 0.05, false), testmap.New(8, 256, 0.05, false),
+		testmap.New(9, 128, 0.05, false)
+	bars, ends := m128.Bars(16, 3, 0.1, nil), m128.FarPair()
+	bars[ends[0]], bars[ends[1]] = 0, 0
+	for _, c := range []struct {
+		name  string
+		m     *testmap.Map
+		g     graph.Implicit[int]
+		class int
+	}{
+		{"one level", m64, m64.Graph(), 0},
+		{"two levels", m256, m256.Graph(), 0},
+		{"class 2 of 3", m128, m128.Barred(3, bars), 2},
+	} {
+		s := hpastar.NewSolver(c.g)
+		s.Update(0)
+		q := s.Search()
+		q.Class(c.class)
+		climbed, near := 0, 0
+		for _, p := range append(c.m.Pairs(17, 60, 0, math.Inf(1)), c.m.FarPair()) {
+			before := q.Stats().Climbs
+			route, found := path(q, p[0], p[1], make([]int, 4*c.m.W))
+			states, costs, ok := abstract(q, p[0], p[1])
+			if ok != found {
+				t.Fatalf("%s %v: a route %v, a path %v", c.name, p, ok, found)
+			}
+			if !found {
+				continue
+			}
+			if q.Stats().Climbs == before {
+				near++
+				if len(states) != 0 {
+					t.Fatalf("%s %v: ends not climbed, the entrances %v", c.name, p, states)
+				}
+			} else {
+				climbed++
+			}
+			k := 0
+			for _, st := range route {
+				if k < len(states) && st == states[k] {
+					k++
+				}
+			}
+			if k < len(states) {
+				t.Fatalf("%s %v: the entrances %v, not in the path's order: %v", c.name, p,
+					states, route)
+			}
+			for _, st := range states {
+				if x, y, _ := c.m.Coords(st); x%side != 0 && x%side != side-1 &&
+					y%side != 0 && y%side != side-1 {
+					t.Fatalf("%s %v: the entrance %d at (%d, %d) on no cluster's border",
+						c.name, p, st, x, y)
+				}
+			}
+			if got, want := sum(costs), walks(t, c.m, route, p[0], p[1]); !agree(got, want) {
+				t.Fatalf("%s %v: the legs cost %v, the path %v", c.name, p, got, want)
+			}
+		}
+		if climbed < 40 || near == 0 {
+			t.Fatalf("%s: %d pairs climbed, %d near; want both", c.name, climbed, near)
+		}
+
+		// the route written as far as dst and costs hold, the last leg the rest of the way
+		far := c.m.FarPair()
+		states, costs, _ := abstract(q, far[0], far[1])
+		if len(states) < 3 {
+			t.Fatalf("%s: the far pair across %d entrances", c.name, len(states))
+		}
+		dst, legs := make([]int, len(states)), make([]float64, len(costs))
+		for _, room := range [][2]int{{2, 3}, {len(states), 2}, {0, 1}, {len(states), 0}} {
+			n, ok := q.Abstract(far[0], far[1], dst[:room[0]], legs[:room[1]])
+			want := max(min(room[0], room[1]-1), 0)
+			if !ok || n != want || !slices.Equal(dst[:n], states[:n]) {
+				t.Fatalf("%s: into %v, %d entrances %v (%v); want %v", c.name, room, n, dst[:n],
+					ok, states[:want])
+			}
+			if room[1] == 0 {
+				continue
+			}
+			if !slices.Equal(legs[:n], costs[:n]) || !agree(legs[n], sum(costs[n:])) {
+				t.Fatalf("%s: into %v, the legs %v; whole %v", c.name, room, legs[:n+1], costs)
+			}
+		}
+	}
+}
+
+func TestSearch_AbstractOfEndsInOneCluster(t *testing.T) {
+	m := testmap.New(4, 128, 0.05, false)
+	from, to := m.OpenNear(66, 67), m.OpenNear(77, 76)
+	fx, fy, _ := m.Coords(from)
+	tx, ty, _ := m.Coords(to)
+	if fx/16 != tx/16 || fy/16 != ty/16 {
+		t.Fatalf("the scene: %d at (%d, %d) and %d at (%d, %d) in two clusters", from, fx, fy, to,
+			tx, ty)
+	}
+	s := hpastar.NewSolver(m.Graph())
+	s.Update(0)
+	q := s.Search()
+	route, found := path(q, from, to, make([]int, 512))
+	if !found {
+		t.Fatal("no path within the cluster")
+	}
+	dst, costs := make([]int, 8), make([]float64, 9)
+	n, ok := q.Abstract(from, to, dst, costs)
+	if want := walks(t, m, route, from, to); !ok || n != 0 || !agree(costs[0], want) {
+		t.Fatalf("%d entrances (%v), the leg %v; want none, the path's %v", n, ok, costs[0],
+			want)
+	}
+	if n, ok = q.Abstract(from, from, dst, costs); !ok || n != 0 || costs[0] != 0 {
+		t.Fatalf("to itself: %d entrances (%v), the leg %v; want none, free", n, ok, costs[0])
+	}
+}
+
+func TestSearch_AbstractTellsNoRouteItCannot(t *testing.T) {
+	m := testmap.New(3, 128, 0.05, false)
+	m.WallRing(40, 40, 10)
+	inside, outside := m.OpenNear(44, 44), m.OpenNear(37, 44)
+	far := m.FarPair()
+	g, gate := m.Gated(far[0])
+	s := hpastar.NewSolver(g)
+	q := s.Search()
+	dst, costs := make([]int, 64), make([]float64, 65)
+	none := func(what string, q *hpastar.Search[int], from, to int) {
+		t.Helper()
+		if n, ok := q.Abstract(from, to, dst, costs); n != 0 || ok {
+			t.Fatalf("%s: %d entrances (%v); want no route", what, n, ok)
+		}
+	}
+	none("not ready", q, far[0], far[1])
+	s.Update(0)
+	if n, ok := q.Abstract(far[0], far[1], dst, costs); n == 0 || !ok {
+		t.Fatalf("ready: %d entrances (%v); want a route climbed", n, ok)
+	}
+	none("without a Layout", exactOf(m), far[0], far[1])
+	none("from off the plane", q, gate, far[1])
+	none("far into the island", q, far[0], inside)
+	none("far out of the island", q, inside, far[1])
+	none("near into the island", q, outside, inside)
+}
+
 func TestSolver_AChangeIsFollowed(t *testing.T) {
 	const size, wallX = 256, 128
 	m := testmap.New(5, size, 0.02, false)
@@ -334,17 +498,19 @@ func TestSearch_PathAllocatesNothingOnceWarm(t *testing.T) {
 	} {
 		s.Update(0)
 		q := s.Search()
-		dst, short := make([]int, 4*128), make([]int, 8)
+		dst, short, costs := make([]int, 4*128), make([]int, 8), make([]float64, 4*128+1)
 		asks := func() {
 			for _, p := range pairs {
 				q.Path(p[0], p[1], dst)
 				q.Path(p[0], p[1], short)
 				q.Reaches(p[0], p[1])
+				q.Abstract(p[0], p[1], dst, costs)
+				q.Abstract(p[0], p[1], short, costs[:len(short)+1])
 			}
 		}
 		asks()
 		if allocs := testing.AllocsPerRun(5, asks); allocs != 0 {
-			t.Fatalf("%s: Path and Reaches allocate %v times once warm", name, allocs)
+			t.Fatalf("%s: Path, Reaches and Abstract allocate %v times once warm", name, allocs)
 		}
 		if st := q.Stats(); name == "HPA*" && (st.Climbs == 0 || st.Exact == 0) {
 			t.Fatalf("%s: the pairs asked %+v; want some climbed and some found by A*", name, st)

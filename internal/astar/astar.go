@@ -82,6 +82,9 @@ func (a *Engine[T]) Run(to T, transitions graph.Transitions[T], n int) bool {
 // Found says the search run over reached its goal.
 func (a *Engine[T]) Found() bool { return a.current >= 0 }
 
+// Cost is what the path found costs.
+func (a *Engine[T]) Cost() float64 { return a.nodes[a.current].G }
+
 // Expanded is how many states the engine has expanded, its searches together.
 func (a *Engine[T]) Expanded() uint64 { return a.expansions }
 

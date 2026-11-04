@@ -104,6 +104,31 @@ func benchPath(b *testing.B, m *testmap.Map, s *hpastar.Solver[int], mode string
 	b.ReportMetric(float64(len(route)), "states")
 }
 
+// the abstract route between the far pair of a map, its entrances and the costs of its legs,
+// through a Solver with a Layout built whole
+func BenchmarkAbstract(b *testing.B) {
+	for _, size := range []int{256, 1024, 4096} {
+		b.Run(fmt.Sprintf("Size_%dx%d", size, size), func(b *testing.B) {
+			testmap.SkipLarge(b, size)
+			m := testmap.New(1, size, benchWalls, false)
+			far := m.FarPair()
+			q := solverFor(b, m.Graph(), "hpa").Search()
+			dst, costs := make([]int, 4*size), make([]float64, 4*size+1)
+			n, ok := q.Abstract(far[0], far[1], dst, costs)
+			if !ok || n == 0 {
+				b.Fatal("the far pair not climbed")
+			}
+			before := q.Stats().Expansions
+			b.ReportAllocs()
+			for b.Loop() {
+				q.Abstract(far[0], far[1], dst, costs)
+			}
+			b.ReportMetric(float64(q.Stats().Expansions-before)/float64(b.N), "expansions/op")
+			b.ReportMetric(float64(n), "states")
+		})
+	}
+}
+
 // the hierarchy of a map built whole from nothing, and built again after a state changed: amid
 // a cluster of the first level near the map's middle, and on the borders of every level there;
 // the state walled off and opened again in turn; of 2, 4 and 8 classes, the steps into its

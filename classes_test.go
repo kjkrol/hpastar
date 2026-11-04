@@ -362,7 +362,7 @@ func TestSearch_ClassesAllocateNothingOnceWarm(t *testing.T) {
 	} {
 		s.Update(0)
 		q := s.Search()
-		dst, short := make([]int, 4*128), make([]int, 8)
+		dst, short, costs := make([]int, 4*128), make([]int, 8), make([]float64, 4*128+1)
 		asks := func() {
 			for k := range classes {
 				q.Class(k)
@@ -370,12 +370,14 @@ func TestSearch_ClassesAllocateNothingOnceWarm(t *testing.T) {
 					q.Path(p[0], p[1], dst)
 					q.Path(p[0], p[1], short)
 					q.Reaches(p[0], p[1])
+					q.Abstract(p[0], p[1], dst, costs)
 				}
 			}
 		}
 		asks()
 		if allocs := testing.AllocsPerRun(2, asks); allocs != 0 {
-			t.Fatalf("%s: Path, Reaches and Class allocate %v times once warm", name, allocs)
+			t.Fatalf("%s: Path, Reaches, Abstract and Class allocate %v times once warm", name,
+				allocs)
 		}
 		if st := q.Stats(); name == "HPA*" && (st.Climbs == 0 || st.Exact == 0) {
 			t.Fatalf("%s: the pairs asked %+v; want some climbed and some found by A*", name, st)

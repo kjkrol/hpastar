@@ -1,6 +1,6 @@
 ---
 name: hpastar
-description: Model solvera hpastar (github.com/kjkrol/hpastar) — korzeń Solver/Search nad kontraktem graph.Implicit, z graph.Layout HPA* i klasami (Transition.Refuses, Search.Class); silniki w internal (astar, dijkstra, hierarchy, heap, dict); niezmienniki, pułapki, odrzucone pomysły, pomiar. Czytaj przy zmianie solvera, kontraktu grafu, silników lub hierarchii, i z grama (plugins/navigation), gdy chodzi o to, co planner dostaje od solvera.
+description: Model solvera hpastar (github.com/kjkrol/hpastar) — korzeń Solver/Search nad kontraktem graph.Implicit, z graph.Layout HPA*, trasą abstrakcyjną (Search.Abstract) i klasami (Transition.Refuses, Search.Class); silniki w internal (astar, dijkstra, hierarchy, heap, dict); niezmienniki, pułapki, odrzucone pomysły, pomiar. Czytaj przy zmianie solvera, kontraktu grafu, silników lub hierarchii, i z grama (plugins/navigation), gdy chodzi o to, co planner dostaje od solvera.
 ---
 
 # hpastar
@@ -20,6 +20,24 @@ gram, `plugins/navigation/internal/pathfind`.
 - Klastry poziomu 1 to bloki `side²` współrzędnych, wyżej bloki 4×4, a szczyt ma ≤ 16 klastrów.
   Budowa idzie zadaniami w krokach, jedno naraz: nieaktualne klastry poziomu 1, potem etykiety,
   potem najniższy wyższy poziom.
+
+## Trasa abstrakcyjna
+
+- `Search.Abstract` to trasa wspinaczki bez `Refine`, dla wołającego, który sam idzie po grafie
+  hierarchii: stany węzłów `q.path` na poziomie szukanym, czyli wejścia klastrów tego poziomu, na
+  który `Route` się wspięło (najniższy, na którym końce leżą w różnych klastrach; przy jednym
+  poziomie hierarchii zawsze poziom 1), i koszt każdego odcinka od `from` przez nie do `to`.
+- Stany są podciągiem stanów `Path` tego samego zapytania, w tej samej kolejności, każdy na
+  granicy klastra; odcinków jest o jeden więcej niż stanów, a ich suma to koszt ścieżki `Path`
+  do 1e-4. Koszty bierze z tego, po czym szło szukanie (`startCost`, `intra`, najtańszy
+  bliźniak `out`, `goalCost`), nie z różnic G.
+- Przy krótkich buforach ostatni odcinek to reszta drogi do `to`, więc suma zostaje kosztem
+  całej trasy. Kto musi wiedzieć, że trasa ucięta, daje bufor o jeden dłuższy, jak przy `Path`.
+- Trasa wspięta ma zawsze co najmniej dwa węzły (końce w różnych klastrach poziomu), więc zero
+  stanów daje tylko `TooNear`: jeden odcinek, koszt dokładnego A*, jak w `Path`. Brak `Layout`,
+  niegotowa hierarchia, koniec poza płaszczyzną i brak ścieżki to fałsz; wołający czeka albo
+  wraca do ścieżki stanów. Koniec leżący na wejściu może wejść jako stan z odcinkiem 0.
+- `Stats` nie liczy `Abstract` w `Paths`, `Climbs` ani `Exact`, tylko w rozwinięciach.
 
 ## Układ
 

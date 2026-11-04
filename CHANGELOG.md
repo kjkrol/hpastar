@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.5.0]
+
+### Added
+
+- `Search.Abstract(from, to, dst, costs)`: the route HPA* climbs, unrefined, for a caller moving
+  along the abstract graph on its own. It writes into `dst` the entrances the route passes
+  through on the level searched and into `costs` the cost of each leg from `from` through them to
+  `to`, as many entrances as `dst` holds and `costs` holds less one, the last leg the rest of the
+  way where they are short; it reports how many entrances it wrote. Ends too near to climb take a
+  single leg, the cheapest path's cost; no path, no `Layout`, a hierarchy not `Ready` and an end
+  off the plane report false. It allocates nothing.
+- Tests: the entrances a subsequence of the refined path's states, each on a cluster's border,
+  the legs summing to its cost, on one level, two and a class of three; the route written into
+  short buffers; ends in one cluster; no route without a hierarchy, before it is ready, off the
+  plane, into and out of a walled island; nothing allocated. Benchmark `Abstract/Size_NxN`.
+
 ## [v1.4.0]
 
 ### Added

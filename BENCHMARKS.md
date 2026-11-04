@@ -193,9 +193,9 @@ an op move with their count of runs, a state walled and opened in turn.
 
 ## The regimes
 
-`Path` and `Update` are the public API's, in the root. The engines' benchmarks are in their
-packages: `Solver_*` the A* engine's, under the names they had in v1, in `internal/astar`;
-`Dijkstra_Fill` in `internal/dijkstra`; `Hierarchy_*` in `internal/hierarchy`.
+`Path`, `Abstract` and `Update` are the public API's, in the root. The engines' benchmarks are
+in their packages: `Solver_*` the A* engine's, under the names they had in v1, in
+`internal/astar`; `Dijkstra_Fill` in `internal/dijkstra`; `Hierarchy_*` in `internal/hierarchy`.
 
 - `Solver_Solve/Size_NxN/CostWeight_W/<dictionary>`: a route from a corner to the far corner of
   a grid of costs 1–5 with walls (`testmap.WalledGrid`), four ways, the Manhattan distance, the
