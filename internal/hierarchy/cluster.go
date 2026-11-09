@@ -29,7 +29,8 @@ type level struct {
 	slot       []int32 // by cluster: its place in the block of that cluster
 	stale      []staleness
 	stales     int
-	next       int32 // no cluster below it is stale
+	next       int32  // no cluster below it is stale
+	built      []bool // by cluster: built since it was last saved or dumped
 }
 
 // a class's view of the hierarchy: by level, the clusters as the steps of the class make them,
@@ -168,7 +169,8 @@ func (h *Hierarchy[T]) lay() {
 	}
 	for {
 		n := cols * rows
-		lv := level{cols: int32(cols), rows: int32(rows), stale: make([]staleness, n), stales: n}
+		lv := level{cols: int32(cols), rows: int32(rows), stale: make([]staleness, n), stales: n,
+			built: make([]bool, n)}
 		for i := range lv.stale {
 			lv.stale[i] = rebuild
 		}
@@ -201,6 +203,7 @@ func (h *Hierarchy[T]) prepare() {
 		for c := range l.at {
 			l.at[c] = -1
 		}
+		l.renamed = make([]bool, len(h.levels[0].stale))
 	}
 	h.job.was = make([]former, len(h.views))
 	h.trees = make([]int, len(h.views))

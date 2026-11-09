@@ -5,6 +5,30 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.6.0]
+
+### Added
+
+- `Solver.Save(w)`, `Solver.Load(r)` and `Solver.Dump(w)`: a hierarchy written whole once it is
+  `Ready`, read back by a Solver over the same graph with the same options in another run so
+  that none builds it again, and the clusters `Update` finished since the last `Save` or `Dump`
+  appended to the file in small portions, a file saved with its dumps loading as the hierarchy
+  stood after the last. The file is little-endian records, each with its length and a CRC-32: a
+  header of the shape and the graph (`ErrMismatch` for another), then a record a cluster of a
+  level as every class sees it and one a class's labels, a later record standing in for an
+  earlier one. `Save` fails with `ErrNotReady` before the hierarchy is ready; `Load` with
+  `ErrNoOf` over a graph without `Of`, `ErrCorrupt` for a file cut short, spoilt or short of a
+  cluster, and leaves the hierarchy as it was whatever it fails with. `graph.Implicit.Of` is the
+  state `Index` gives a key, which a load stands the clusters' states by.
+- Tests: the file loaded against the hierarchy saved and the paths of both; every class of
+  three and a layered graph; another shape, no `Of`, a file cut short, a byte turned, no
+  header, no records, each leaving the hierarchy as before; dumps of two changes, one built in
+  small budgets, loaded over the base. Benchmarks `Save`, `Load`.
+
+### Changed
+
+- The test `Diff` of two hierarchies compares the kept edges too.
+
 ## [v1.5.0]
 
 ### Added

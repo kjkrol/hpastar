@@ -25,7 +25,8 @@ func (h *Hierarchy[T]) Rebuilds() (whole, costs []uint64, labelled, relabelled u
 func (h *Hierarchy[T]) Worked() (build, step int) { return h.worked, h.stepWorked }
 
 // Diff says which cluster of h differs from o's, as any class sees it, "" where none does: its
-// nodes, their twins, classes and costs, and its trees where both keep them.
+// nodes, their twins, classes, costs and kept edges, and its trees where both keep them; the
+// labels name the components as each labelling found them, so they are not compared.
 func (h *Hierarchy[T]) Diff(o *Hierarchy[T]) string {
 	if len(h.views) != len(o.views) {
 		return fmt.Sprintf("%d classes against %d", len(h.views), len(o.views))
@@ -56,7 +57,8 @@ func (h *Hierarchy[T]) DiffView(k int, o *Hierarchy[T], ko int) string {
 				!slices.Equal(a.local, b.local) || !slices.Equal(a.down, b.down) ||
 				!slices.Equal(a.class, b.class) || !slices.Equal(a.twinAt, b.twinAt) ||
 				!slices.Equal(a.twins, b.twins) || !slices.Equal(a.intra, b.intra) ||
-				!slices.Equal(a.offset, b.offset) || a.layers != b.layers {
+				!slices.Equal(a.offset, b.offset) || a.layers != b.layers ||
+				!slices.Equal(a.out, b.out) || !slices.Equal(a.in, b.in) {
 				return fmt.Sprintf("cluster %d of level %d%s differs", c, j+1, of)
 			}
 			if a.span > 0 && b.span > 0 && (!slices.Equal(a.tree8, b.tree8) ||

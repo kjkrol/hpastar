@@ -7,6 +7,20 @@ alternately with the working tree, `-benchtime=10x -cpu=1`, v1.1.3 against v1.2.
 unless said otherwise. The suite is `go test -run '^$' -bench . -benchmem` (`make bench`);
 `make bench-save` keeps five runs under `bench_results/`.
 
+## v1.6.0: the hierarchy saved and loaded
+
+`BenchmarkSave` writes a hierarchy built whole over a map of the benchmarks' walls, `BenchmarkLoad`
+reads it into a Solver over the same graph, nothing built (`go test -run xxx -bench 'Save|Load'`,
+2026-11-10, one class):
+
+| Map | Save | File | Load |
+|:---|---:|---:|---:|
+| 256×256 | 2.8 ms | 2.3 MB | 4.4 ms |
+| 1024×1024 | 64 ms | 44 MB | 75–86 ms |
+
+A load allocates the clusters anew (150 MB for the 1024² map, half of it the trees), so a
+hierarchy loaded costs the memory of one built; the file is about a byte a cell and a half.
+
 ## v1.4.0: classes
 
 One run a side, `-count=1 -cpu=1`, a plain build, the test binaries compiled before the first run,

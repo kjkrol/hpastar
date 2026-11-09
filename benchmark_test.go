@@ -1,6 +1,7 @@
 package hpastar_test
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
 	"testing"
@@ -236,4 +237,45 @@ func benchChange(b *testing.B, m *testmap.Map, g graph.Implicit[int], rung strin
 		b.ReportMetric(perOp(took[level]), fmt.Sprintf("l%d-ms/op", level))
 	}
 	b.ReportMetric(perOp(took[0]), "labels-ms/op")
+}
+
+// BenchmarkSave writes the hierarchy over a map whole, BenchmarkLoad reads it into another
+// Solver, nothing built.
+func BenchmarkSave(b *testing.B) {
+	for _, size := range []int{256, 1024} {
+		b.Run(fmt.Sprintf("Size_%dx%d", size, size), func(b *testing.B) {
+			s := hpastar.NewSolver(testmap.New(1, size, benchWalls, false).Graph())
+			s.Update(0)
+			var buf bytes.Buffer
+			b.ReportAllocs()
+			for b.Loop() {
+				buf.Reset()
+				if err := s.Save(&buf); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.ReportMetric(float64(buf.Len()), "bytes")
+		})
+	}
+}
+
+func BenchmarkLoad(b *testing.B) {
+	for _, size := range []int{256, 1024} {
+		b.Run(fmt.Sprintf("Size_%dx%d", size, size), func(b *testing.B) {
+			m := testmap.New(1, size, benchWalls, false)
+			s := hpastar.NewSolver(m.Graph())
+			s.Update(0)
+			var buf bytes.Buffer
+			if err := s.Save(&buf); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				l := hpastar.NewSolver(m.Graph())
+				if err := l.Load(bytes.NewReader(buf.Bytes())); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
 }
