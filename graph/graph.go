@@ -28,8 +28,10 @@ type Implicit[T comparable] struct {
 	Heuristic Heuristic[T]
 	// Index gives each state an integer of its own, in [0, Size) for a dictionary of a slot a
 	// state (5 bytes each, an index outside panicking); with no Size the integers key a map, and
-	// with no Index the states do.
+	// with no Index the states do. Of is the state Index gives key, for a hierarchy loaded from
+	// a file to stand its states again; without it none loads.
 	Index func(T) int
+	Of    func(key int) T
 	Size  int
 	// Layout lays the states out in a plane; with one, a path between ends far apart is found by
 	// HPA* over a hierarchy of clusters, nil keeping every path the cheapest, found by A*.

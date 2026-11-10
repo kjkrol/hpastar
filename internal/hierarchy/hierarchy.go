@@ -393,6 +393,7 @@ func (h *Hierarchy[T]) finish() int {
 	if lv.stale[c] = jb.again; jb.again == fresh {
 		lv.stales--
 	}
+	lv.built[c] = true
 	if j == 0 {
 		for k := range h.views {
 			work += h.note(k, c)

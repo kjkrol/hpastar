@@ -183,12 +183,13 @@ func (h *Hierarchy[T]) one(j int) *tier[T] { return &h.views[0].levels[j] }
 
 func TestHierarchy_ClustersTileThePlane(t *testing.T) {
 	plane := func(w, h int) graph.Implicit[int] {
-		return graph.Implicit[int]{Index: testmap.Identity, Size: w * h, Layout: &graph.Layout[int]{
-			Coords: func(s int) (int, int, bool) { return s % w, s / w, s >= 0 && s < w*h },
-			At:     func(x, y int, buf []int) []int { return append(buf, y*w+x) },
-			Width:  w,
-			Height: h,
-		}}
+		return graph.Implicit[int]{Index: testmap.Identity, Of: testmap.Identity, Size: w * h,
+			Layout: &graph.Layout[int]{
+				Coords: func(s int) (int, int, bool) { return s % w, s / w, s >= 0 && s < w*h },
+				At:     func(x, y int, buf []int) []int { return append(buf, y*w+x) },
+				Width:  w,
+				Height: h,
+			}}
 	}
 	for _, c := range []struct {
 		size     int

@@ -21,8 +21,11 @@ type labels struct {
 	// was then, and by cluster its place among them, -1 for none
 	changed []snapshot
 	at      []int32
-	// the labellings whole, and those of the changed clusters alone
-	made, local uint64
+	// the labellings whole, and those of the changed clusters alone, and both as the labels were
+	// last saved or dumped; by cluster of level 1, whether its nodes were named since
+	made, local           uint64
+	savedMade, savedLocal uint64
+	renamed               []bool
 	// a labelling whole: by node across level 1, its parent in the union, then its name
 	root []int32
 	// the changed clusters' labelling: by changed cluster where its vertices start, now and as
@@ -260,6 +263,7 @@ func (v *view[T]) nameLabels(c int32) int {
 	cl := &lv.clusters[c]
 	base := lv.base[c]
 	cl.label = grown(cl.label, len(cl.keys))
+	l.renamed[c] = true
 	for i := range cl.keys {
 		g := base + int32(i)
 		if r := l.root[g]; r == g {
@@ -354,6 +358,7 @@ func (h *Hierarchy[T]) relabel(v *view[T]) (work int, ok bool) {
 	for x := range l.changed {
 		cl := &lv.clusters[l.changed[x].c]
 		cl.label = grown(cl.label, len(cl.keys))
+		l.renamed[l.changed[x].c] = true
 		for i := range cl.keys {
 			r := rootOf(l.now, l.from[x]+l.pieces[l.from[x]+int32(i)])
 			if l.named[r] < 0 {

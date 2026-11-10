@@ -138,7 +138,7 @@ func (m *Map) Octile(a, b int) float64 {
 
 // Graph is the map's graph laid out in the plane, a state y·W + x.
 func (m *Map) Graph() graph.Implicit[int] {
-	return graph.Implicit[int]{Forward: m.Forward, Heuristic: m.Octile, Index: Identity,
+	return graph.Implicit[int]{Forward: m.Forward, Heuristic: m.Octile, Index: Identity, Of: Identity,
 		Size: m.W * m.H, Layout: &graph.Layout[int]{Coords: m.Coords, At: m.States, Width: m.W,
 			Height: m.H, Backward: m.Backward}}
 }

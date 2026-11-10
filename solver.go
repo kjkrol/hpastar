@@ -1,8 +1,19 @@
 package hpastar
 
 import (
+	"io"
+
 	"github.com/kjkrol/hpastar/graph"
 	"github.com/kjkrol/hpastar/internal/hierarchy"
+)
+
+// What Save, Load and Dump fail with: a hierarchy not Ready, a file of a hierarchy of another
+// shape or over another graph, a graph without Of, a file that does not read as one saved.
+var (
+	ErrNotReady = hierarchy.ErrNotReady
+	ErrMismatch = hierarchy.ErrMismatch
+	ErrNoOf     = hierarchy.ErrNoOf
+	ErrCorrupt  = hierarchy.ErrCorrupt
 )
 
 // Solver finds paths over one graph, made once and shared by the Searches of many goroutines.
@@ -64,6 +75,39 @@ func (s *Solver[T]) Update(budget int) (built, left int) {
 // Ready says nothing is left stale, so a Path between ends far apart climbs the hierarchy;
 // without a Layout it is always true.
 func (s *Solver[T]) Ready() bool { return s.h == nil || s.h.Ready() }
+
+// Save writes the hierarchy whole to w, to be loaded by a Solver over the same graph with the
+// same options in another run, so that none builds it again: ErrNotReady while it is not Ready,
+// ErrNotReady too without a Layout. It writes what Dump would and leaves nothing to dump.
+func (s *Solver[T]) Save(w io.Writer) error {
+	if s.h == nil {
+		return ErrNotReady
+	}
+	return s.h.Save(w)
+}
+
+// Load reads into the hierarchy a file Save wrote, the Dumps appended to it taken in order,
+// and leaves it Ready, whatever it was building dropped: ErrMismatch where the file holds a
+// hierarchy of another shape or over another graph, ErrNoOf where the graph has no Of, ErrCorrupt
+// where the file does not read as saved, and ErrNotReady without a Layout; whatever it fails
+// with, the hierarchy stands as before.
+func (s *Solver[T]) Load(r io.Reader) error {
+	if s.h == nil {
+		return ErrNotReady
+	}
+	return s.h.Load(r)
+}
+
+// Dump appends to w the records of what Update built since Save or Dump last wrote, the clusters
+// finished and not stale again and the labels worked out anew, and reports how many clusters it
+// wrote: a file Save wrote with the Dumps appended loads as the hierarchy stood after the last.
+// Nothing without a Layout.
+func (s *Solver[T]) Dump(w io.Writer) (clusters int, err error) {
+	if s.h == nil {
+		return 0, nil
+	}
+	return s.h.Dump(w)
+}
 
 // Search is a Search over the graph's own steps, for class 0.
 func (s *Solver[T]) Search() *Search[T] { return s.SearchVia(nil, nil) }

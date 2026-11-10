@@ -39,6 +39,21 @@ gram, `plugins/navigation/internal/pathfind`.
   wraca do ścieżki stanów. Koniec leżący na wejściu może wejść jako stan z odcinkiem 0.
 - `Stats` nie liczy `Abstract` w `Paths`, `Climbs` ani `Exact`, tylko w rozwinięciach.
 
+## Plik hierarchii
+
+- `Solver.Save` pisze hierarchię gotową w całości, `Load` czyta ją do Solvera nad tym samym grafem
+  z tymi samymi opcjami (nagłówek: kształt i rozmiar grafu, inny to `ErrMismatch`), `Dump`
+  dopisuje rekordy klastrów skończonych od ostatniego `Save`/`Dump` (flaga `level.built`) i
+  etykiet klasy, gdy `made`/`local` ruszyły (`savedMade`, `savedLocal`); plik to baza plus
+  zrzuty, późniejszy rekord wygrywa. Rekord = rodzaj, długość, treść, CRC-32; wczytanie idzie do
+  kopii widoków i podmienia je dopiero po komplecie (każdy klaster każdego poziomu, etykiety
+  każdej klasy), więc błąd zostawia hierarchię jak była.
+- Stany klastrów nie idą do pliku: `graph.Implicit.Of` odtwarza je z kluczy (`Index` w drugą
+  stronę). Bez `Of` `Load` odmawia (`ErrNoOf`). `trees` liczy się na nowo z `cluster.bytes`,
+  `labels.at` na -1, `based` fałsz, zadanie w toku porzucone.
+- Jedyny wyjątek od „korzeń niczego nie reeksportuje": wartości `Err*` (`errors.Is` wymaga tej
+  samej wartości po obu stronach).
+
 ## Układ
 
 - Pakiet na funkcję, bez aliasów i cykli: `graph` ← `heap`, `dict` ← `astar`, `dijkstra` ←
