@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v1.6.1]
+
+### Fixed
+
+- `Solver.Dump` wrote a cluster as soon as it was built, before the labels of its nodes were
+  worked out anew and before the clusters above followed it: a run ending there left a file
+  that loaded as a hierarchy that never stood, and the next change near the cluster panicked
+  in the labelling (an index past the labels) or left the levels above as they were before the
+  change. `Dump` now writes nothing while the hierarchy is not `Ready`; what was built waits
+  for the next `Dump`. `Load` refuses with `ErrCorrupt` a file whose cluster of level 1 is
+  named for other nodes than it holds, as a file written before this could be.
+- Tests: a change built in small budgets and dumped after each, the file as it stood after any
+  of the dumps loaded, the change told again and built, the hierarchy the same as the one that
+  dumped.
+
 ## [v1.6.0]
 
 ### Added

@@ -9,6 +9,7 @@ import (
 	"hash/crc32"
 	"io"
 	"math"
+	"slices"
 )
 
 // The file of a hierarchy: a header of what the hierarchy is laid over, then records to the
@@ -81,11 +82,15 @@ func (h *Hierarchy[T]) Save(w io.Writer) error {
 }
 
 // Dump appends to w the records of what was built since Save or Dump last wrote: the clusters
-// finished and not stale again, and those of level 1 whose nodes were named anew, every class's
-// view of each, and the labels of a class worked out anew; it reports how many clusters it
-// wrote. A file Save wrote with the Dumps appended
-// loads as the hierarchy stood after the last of them.
+// finished, and those of level 1 whose nodes were named anew, every class's view of each, and
+// the labels of a class worked out anew; it reports how many clusters it wrote. It writes
+// nothing while h is not Ready: a cluster built anew beside a parent still to follow it, or
+// nodes still to be named, would load as a hierarchy that never stood. A file Save wrote with
+// the Dumps appended loads as the hierarchy stood after the last of them.
 func (h *Hierarchy[T]) Dump(w io.Writer) (clusters int, err error) {
+	if !h.Ready() {
+		return 0, nil
+	}
 	bw := bufio.NewWriter(w)
 	var body bytes.Buffer
 	for j := range h.levels {
@@ -255,6 +260,14 @@ func (h *Hierarchy[T]) Load(r io.Reader) error {
 	for k, ok := range labelled {
 		if !ok {
 			return fmt.Errorf("%w: the labels of class %d missing", ErrCorrupt, k)
+		}
+		names := int32(len(views[k].labels.alias))
+		for c := range views[k].levels[0].clusters {
+			cl := &views[k].levels[0].clusters[c]
+			if len(cl.label) != len(cl.keys) || slices.ContainsFunc(cl.label,
+				func(name int32) bool { return name < 0 || name >= names }) {
+				return fmt.Errorf("%w: cluster %d of level 1 named for other nodes", ErrCorrupt, c)
+			}
 		}
 	}
 	h.stand(views)
