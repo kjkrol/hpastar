@@ -190,3 +190,48 @@ func TestSolver_LoadsTheDumpsAppendedToWhatItSaved(t *testing.T) {
 		t.Errorf("dumped %d clusters (%v) with nothing built since, want none", n, err)
 	}
 }
+
+// a run may end after any Dump: what the file holds then loads and is built on
+func TestSolver_LoadsAFileCutAfterAnyDump(t *testing.T) {
+	m := testmap.New(8, 256, 0.05, false)
+	s := hpastar.NewSolver(m.Graph())
+	s.Update(0)
+	var file bytes.Buffer
+	if err := s.Save(&file); err != nil {
+		t.Fatal(err)
+	}
+	// a wall along a border of clusters and a gap in another: nodes come and go, components
+	// join and part
+	var changed []int
+	for x := 30; x < 70; x++ {
+		changed = append(changed, 47*256+x, 48*256+x)
+	}
+	var cuts [][]byte
+	for _, c := range changed {
+		m.Share[c] = 0
+		s.Changed(c)
+	}
+	for left := 1; left > 0; {
+		_, left = s.Update(300)
+		if _, err := s.Dump(&file); err != nil {
+			t.Fatal(err)
+		}
+		cuts = append(cuts, bytes.Clone(file.Bytes()))
+	}
+	if len(cuts) < 4 {
+		t.Fatalf("the change was built in %d updates, want it cut in several", len(cuts))
+	}
+	for i, cut := range cuts {
+		l := hpastar.NewSolver(m.Graph())
+		if err := l.Load(bytes.NewReader(cut)); err != nil {
+			t.Fatalf("the file cut after dump %d of %d: %v", i+1, len(cuts), err)
+		}
+		for _, c := range changed {
+			l.Changed(c)
+		}
+		l.Update(0)
+		if diff := hpastar.GraphsDiffer(s, l); diff != "" {
+			t.Fatalf("cut after dump %d of %d, loaded and built again: %s", i+1, len(cuts), diff)
+		}
+	}
+}

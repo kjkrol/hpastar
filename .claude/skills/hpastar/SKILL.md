@@ -48,6 +48,13 @@ gram, `plugins/navigation/internal/pathfind`.
   zrzuty, późniejszy rekord wygrywa. Rekord = rodzaj, długość, treść, CRC-32; wczytanie idzie do
   kopii widoków i podmienia je dopiero po komplecie (każdy klaster każdego poziomu, etykiety
   każdej klasy), więc błąd zostawia hierarchię jak była.
+- `Dump` pisze tylko hierarchię gotową (`Ready`): plik jest wczytywany jako całość świeża, a
+  bieg może się skończyć po dowolnym zrzucie. Klaster zrzucony przed nazwaniem węzłów miał
+  nowe klucze przy starych etykietach (panic w `relabel` przy następnej zmianie obok), a
+  klaster poziomu 1 zrzucony przed rodzicem zostawiał rodzica starego na zawsze: po wczytaniu
+  ten sam klaster przebudowany niczym się nie różni, więc rodzica nikt nie oznacza (v1.6.1,
+  test `LoadsAFileCutAfterAnyDump`). `Load` sprawdza, że etykiety klastra poziomu 1 są od jego
+  węzłów i mieszczą się w `alias`.
 - Stany klastrów nie idą do pliku: `graph.Implicit.Of` odtwarza je z kluczy (`Index` w drugą
   stronę). Bez `Of` `Load` odmawia (`ErrNoOf`). `trees` liczy się na nowo z `cluster.bytes`,
   `labels.at` na -1, `based` fałsz, zadanie w toku porzucone.

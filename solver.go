@@ -99,9 +99,9 @@ func (s *Solver[T]) Load(r io.Reader) error {
 }
 
 // Dump appends to w the records of what Update built since Save or Dump last wrote, the clusters
-// finished and not stale again and the labels worked out anew, and reports how many clusters it
-// wrote: a file Save wrote with the Dumps appended loads as the hierarchy stood after the last.
-// Nothing without a Layout.
+// finished and the labels worked out anew, and reports how many clusters it wrote: a file Save
+// wrote with the Dumps appended loads as the hierarchy stood after the last. Nothing while the
+// hierarchy is not Ready, and nothing without a Layout.
 func (s *Solver[T]) Dump(w io.Writer) (clusters int, err error) {
 	if s.h == nil {
 		return 0, nil
